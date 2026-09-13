@@ -1,48 +1,51 @@
-import os
 import streamlit as st
-from dotenv import load_dotenv
-from openai import OpenAI
-
-load_dotenv()
+from google import genai
 
 st.set_page_config(page_title="My AI Chatbot", page_icon="🤖")
+
 st.title("🤖 My AI Chatbot")
 st.caption("A simple General AI Chatbot")
 
-api_key = os.getenv("OPENAI_API_KEY")
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    api_key = None
 
 if not api_key:
-    st.error("OPENAI_API_KEY is missing. Add it to the .env file and restart the app.")
+    st.error("GEMINI_API_KEY is missing.")
     st.stop()
 
-client = OpenAI(api_key=api_key)
+client = genai.Client(api_key=api_key)
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "system", "content": "You are a helpful, friendly AI assistant. Explain things clearly and simply."}
-    ]
+    st.session_state.messages = []
 
 for message in st.session_state.messages:
-    if message["role"] != "system":
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 if prompt := st.chat_input("Type your message..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
         try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=st.session_state.messages,
-                temperature=0.7,
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
             )
-            answer = response.choices[0].message.content
+
+            answer = response.text
             st.markdown(answer)
+
             st.session_state.messages.append(
                 {"role": "assistant", "content": answer}
             )
+
         except Exception as e:
             st.error(f"Something went wrong: {e}")
